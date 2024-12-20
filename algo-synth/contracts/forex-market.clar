@@ -123,7 +123,10 @@
     (let ((pair-data (unwrap! (map-get? pairs {pair-id: pair-id}) err-invalid-pair))
           (current-price (unwrap! (get-price pair-id) err-invalid-price))
           (target-price (get price pair-data))
-          (deviation (* (abs (- current-price target-price)) u10000)))
+          (price-diff (if (> current-price target-price)
+                         (- current-price target-price)
+                         (- target-price current-price)))
+          (deviation (* price-diff u10000)))
         (asserts! (> deviation (var-get rebase-threshold)) (ok false))
         (let ((new-supply (/ (* (get supply pair-data) target-price) current-price)))
             (map-set pairs
