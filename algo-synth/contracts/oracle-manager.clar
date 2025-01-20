@@ -98,66 +98,19 @@
             (merge (unwrap! (map-get? oracle-sources {oracle-id: oracle-id}) err-invalid-oracle)
                   {last-update: block-height}))
         
-        ;; Trigger price aggregation
-        (try! (aggregate-prices pair-id))
+        ;; Update aggregated price
+        (update-aggregated-price pair-id price)
         (ok true)))
 
-;; Price Aggregation
-(define-private (aggregate-prices (pair-id uint))
-    (let ((valid-prices (filter-valid-prices pair-id)))
-        (if (> (len valid-prices) u0)
-            (let ((weighted-avg (calculate-weighted-average valid-prices)))
-                (map-set aggregated-prices
-                    {pair-id: pair-id}
-                    {price: weighted-avg,
-                     timestamp: block-height,
-                     source-count: (len valid-prices)})
-                (ok true))
-            (ok false))))
-
-(define-private (filter-valid-prices (pair-id uint))
-    (filter is-valid-price-tuple
-        (map unwrap-price
-            (get-all-oracle-prices pair-id))))
-
-(define-private (is-valid-price-tuple (price-tuple {price: uint, timestamp: uint, confidence: uint}))
-    (and
-        (> (get price price-tuple) u0)
-        (is-price-valid (get timestamp price-tuple))
-        (> (get confidence price-tuple) u5000)))  ;; Minimum 50% confidence required
-
-(define-private (calculate-weighted-average (prices (list 100 {price: uint, timestamp: uint, confidence: uint})))
-    (let ((sum-products (fold + u0 (map weighted-price prices)))
-          (sum-weights (fold + u0 (map get-confidence prices))))
-        (/ (* sum-products u100000000) sum-weights)))
-
-(define-private (weighted-price (price-tuple {price: uint, timestamp: uint, confidence: uint}))
-    (* (get price price-tuple) (get confidence price-tuple)))
-
-(define-private (get-confidence (price-tuple {price: uint, timestamp: uint, confidence: uint}))
-    (get confidence price-tuple))
-
-;; Helper functions
-(define-private (get-all-oracle-prices (pair-id uint))
-    (map unwrap-or-default
-        (map get-oracle-price
-            (get-active-oracle-ids))))
-
-(define-private (get-oracle-price (oracle-id uint))
-    (map-get? price-feeds {pair-id: pair-id, oracle-id: oracle-id}))
-
-(define-private (unwrap-or-default (price-opt (optional {price: uint, timestamp: uint, confidence: uint})))
-    (match price-opt
-        price-data price-data
-        {price: u0, timestamp: u0, confidence: u0}))
-
-(define-private (get-active-oracle-ids)
-    (filter get-enabled
-        (map to-uint (list u1 u2 u3 u4 u5))))  ;; Support up to 5 oracles
+;; Price Aggregation Functions
+(define-private (update-aggregated-price (pair-id uint) (new-price uint))
+    (map-set aggregated-prices
+        {pair-id: pair-id}
+        {price: new-price,
+         timestamp: block-height,
+         source-count: u1}))
 
 (define-private (get-enabled (oracle-id uint))
     (match (map-get? oracle-sources {oracle-id: oracle-id})
         oracle-data (get enabled oracle-data)
         false))
-
-(define-private (to-uint (n uint)) n)
