@@ -9,6 +9,11 @@ requirements = []
 path = 'contracts/forex-market.clar'
 clarity_version = 2
 epoch = 2.5
+
+[contracts.oracle-manager]
+path = 'contracts/oracle-manager.clar'
+clarity_version = 2
+epoch = 2.5
 [repl.analysis]
 passes = ['check_checker']
 
